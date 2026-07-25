@@ -1,0 +1,106 @@
+# ==========================================================
+# DAY 20 - AI RAG CHATBOT
+#
+# Workflow:
+# PDF
+# ↓
+# Load
+# ↓
+# Split
+# ↓
+# Embeddings
+# ↓
+# FAISS
+# ↓
+# Retrieve
+# ↓
+# Gemini
+# ↓
+# Answer
+# ==========================================================
+
+import os
+import streamlit as st
+
+from langchain_community.document_loaders import PyPDFLoader
+
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+
+from langchain_community.vectorstores import FAISS
+
+from langchain.chains import RetrievalQA
+
+
+# --------------------------------------------------
+
+GOOGLE_API_KEY = "YOUR_API_KEY"
+
+os.environ["GOOGLE_API_KEY"] = GOOGLE_API_KEY
+
+# --------------------------------------------------
+
+loader = PyPDFLoader("data/company_policy.pdf")
+
+documents = loader.load()
+
+# --------------------------------------------------
+
+splitter = RecursiveCharacterTextSplitter(
+
+    chunk_size=500,
+
+    chunk_overlap=100
+
+)
+
+chunks = splitter.split_documents(documents)
+
+# --------------------------------------------------
+
+embeddings = GoogleGenerativeAIEmbeddings(
+
+    model="models/embedding-001"
+
+)
+
+vector_db = FAISS.from_documents(
+
+    chunks,
+
+    embeddings
+
+)
+
+# --------------------------------------------------
+
+llm = ChatGoogleGenerativeAI(
+
+    model="gemini-2.5-flash",
+
+    temperature=0
+
+)
+
+qa = RetrievalQA.from_chain_type(
+
+    llm=llm,
+
+    retriever=vector_db.as_retriever()
+
+)
+
+# --------------------------------------------------
+
+st.title("📄 AI PDF Chatbot")
+
+question = st.text_input("Ask your question")
+
+if st.button("Ask"):
+
+    answer = qa.run(question)
+
+    st.success(answer)
